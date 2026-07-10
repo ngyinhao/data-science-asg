@@ -1,0 +1,9 @@
+column,category,count
+seasons,Spring,2208
+seasons,Summer,2208
+seasons,Autumn,2184
+seasons,Winter,2160
+holiday,No Holiday,8328
+holiday,Holiday,432
+functioning_day,Yes,8465
+functioning_day,No,295

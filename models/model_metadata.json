@@ -1,0 +1,60 @@
+{
+  "project_title": "Seoul Bike Sharing Demand",
+  "project_frame": "Bike Supply Planning",
+  "target": "rented_bike_count",
+  "feature_columns": [
+    "hour",
+    "temperature_c",
+    "humidity_pct",
+    "wind_speed_m_per_s",
+    "visibility_10m",
+    "dew_point_temperature_c",
+    "solar_radiation_mj_per_m2",
+    "rainfall_mm",
+    "snowfall_cm",
+    "month",
+    "day",
+    "weekday",
+    "is_weekend",
+    "seasons",
+    "holiday",
+    "functioning_day"
+  ],
+  "numeric_features": [
+    "hour",
+    "temperature_c",
+    "humidity_pct",
+    "wind_speed_m_per_s",
+    "visibility_10m",
+    "dew_point_temperature_c",
+    "solar_radiation_mj_per_m2",
+    "rainfall_mm",
+    "snowfall_cm",
+    "month",
+    "day",
+    "weekday",
+    "is_weekend"
+  ],
+  "categorical_features": [
+    "seasons",
+    "holiday",
+    "functioning_day"
+  ],
+  "split_strategy": "Random 80/20 train-test split with random_state=42.",
+  "preprocessing_decisions": [
+    "Date was converted to a date type and expanded into month, day, weekday, and weekend fields.",
+    "Categorical variables were one-hot encoded: seasons, holiday, and functioning_day.",
+    "Non-functioning-day records were kept because a zero-demand closure state is operationally meaningful.",
+    "Demand outliers were kept because supply planning must understand peak demand rather than hide it.",
+    "Numeric features were scaled so Multiple Linear Regression can be compared fairly with the tree models."
+  ],
+  "models_trained": [
+    "Multiple Linear Regression",
+    "Decision Tree Regressor",
+    "Random Forest Regressor",
+    "Gradient Boosting Regressor"
+  ],
+  "selected_model": "Random Forest Regressor",
+  "selected_model_reason": "Random Forest Regressor achieved the lowest test RMSE among the four required models while remaining suitable for a Streamlit prototype.",
+  "comparison_points_count": 29
+}

@@ -1,0 +1,12 @@
+{
+  "highest_hour": "18:00 has the highest average rented-bike demand.",
+  "lowest_hour": "4:00 has the lowest average rented-bike demand.",
+  "highest_season": "Summer has the highest average demand.",
+  "lowest_season": "Winter has the lowest average demand.",
+  "temperature": "Demand generally increases with temperature; the correlation is 0.54.",
+  "rainfall": "Rainfall reduces demand: dry-hour average is 739, while hours with at least 5 mm rain average 73.",
+  "snowfall": "Snowfall reduces demand: no-snow average is 732, while snow hours average 185.",
+  "holiday": "No Holiday has higher average demand than Holiday.",
+  "functioning_day": "When Functioning Day is No, demand drops heavily and is usually near zero.",
+  "strongest_features": "The strongest numeric relationships are temperature_c, hour, dew_point_temperature_c, solar_radiation_mj_per_m2, humidity_pct."
+}
