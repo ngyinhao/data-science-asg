@@ -13,12 +13,19 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from app_utils import (
-    figure_path,
     format_number,
     load_feature_importance,
     load_metadata,
     load_model_comparison,
+    load_test_predictions,
     selected_model_row,
+)
+from chart_utils import (
+    actual_vs_predicted_chart,
+    feature_importance_chart,
+    hourly_error_chart,
+    residual_histogram,
+    seasonal_error_box_chart,
 )
 
 
@@ -28,6 +35,7 @@ st.caption("Evidence for the model used by the prediction page.")
 metadata = load_metadata()
 comparison = load_model_comparison()
 importance = load_feature_importance()
+predictions = load_test_predictions()
 selected_name = str(metadata["selected_model"])
 selected = selected_model_row(comparison, selected_name)
 runner_up = comparison.loc[comparison["model"] != selected_name].iloc[0]
@@ -71,32 +79,38 @@ with evidence_col:
 st.subheader("Visual evidence")
 
 with st.container(border=True):
-    st.subheader("Actual vs predicted")
-    st.image(figure_path("09_actual_vs_predicted.png"), caption="How closely predictions follow actual rented-bike counts")
+    st.subheader("Actual vs predicted demand")
+    st.caption("Each point is a held-out test observation. Drag to brush a region, scroll to zoom, and hover for scenario details; the dashed line is perfect agreement.")
+    st.altair_chart(actual_vs_predicted_chart(predictions), width="stretch")
 
 left, right = st.columns(2, gap="large")
 
 with left:
     with st.container(border=True):
         st.subheader("Residual distribution")
-        st.image(figure_path("10_residual_distribution.png"), caption="Prediction errors centered around the actual values")
+        st.caption("The histogram shows whether prediction errors are centered near zero and how heavy the tails are.")
+        st.altair_chart(residual_histogram(predictions), width="stretch")
 
 with right:
     with st.container(border=True):
-        st.subheader("Error by hour")
-        st.image(figure_path("11_error_by_hour.png"), caption="Hourly error pattern for operational planning")
+        st.subheader("Hourly error profile")
+        st.caption("Mean absolute error across the 24-hour operating cycle; hover over points for exact values.")
+        st.altair_chart(hourly_error_chart(predictions), width="stretch")
 
 left, right = st.columns(2, gap="large")
 
 with left:
     with st.container(border=True):
-        st.subheader("Error by season")
-        st.image(figure_path("12_error_by_season.png"), caption="Seasonal error pattern")
+        st.subheader("Seasonal error spread")
+        st.caption("Box-and-whisker ranges compare typical and extreme absolute errors. The white point marks the mean.")
+        st.altair_chart(seasonal_error_box_chart(predictions), width="stretch")
 
 with right:
     with st.container(border=True):
         st.subheader("Feature importance")
-        st.image(figure_path("13_feature_importance.png"), caption="Most influential inputs in the selected model")
+        feature_count = st.slider("Features to display", 5, min(20, len(importance)), 12)
+        st.caption("Lollipop ranking of the model's strongest global feature drivers; hover for exact importance.")
+        st.altair_chart(feature_importance_chart(importance, feature_count), width="stretch")
 
 st.subheader("Top feature drivers")
 top_features = importance.head(10).rename(columns={"feature_label": "Feature", "importance": "Importance"})

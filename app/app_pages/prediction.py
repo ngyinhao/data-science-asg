@@ -14,6 +14,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from app_utils import build_input_frame, load_metadata, load_model
+from chart_utils import demand_profile_chart, supply_buffer_chart, temperature_sensitivity_chart
 
 
 st.title("Prediction")
@@ -111,4 +112,45 @@ with chart_col:
                 "bikes": [prediction, prediction * 1.1, prediction * 1.2],
             }
         )
-        st.bar_chart(chart_frame, x="scenario", y="bikes", y_label="Bikes")
+        st.caption("Lollipop markers show the current estimate and two practical stock buffers.")
+        st.altair_chart(supply_buffer_chart(chart_frame), width="stretch")
+
+st.subheader("Interactive scenario analysis")
+st.caption("These views hold the other inputs constant, so they describe the model's response—not a causal effect.")
+
+profile_rows = []
+for profile_hour in range(24):
+    profile_input = input_frame.copy()
+    profile_input.loc[0, "hour"] = profile_hour
+    profile_rows.append(
+        {"hour": profile_hour, "predicted_bikes": max(float(model.predict(profile_input)[0]), 0)}
+    )
+hourly_profile = pd.DataFrame(profile_rows)
+
+temperature_rows = []
+for profile_temperature in range(-15, 36, 3):
+    temperature_input = input_frame.copy()
+    temperature_input.loc[0, "temperature_c"] = float(profile_temperature)
+    temperature_rows.append(
+        {
+            "temperature_c": float(profile_temperature),
+            "predicted_bikes": max(float(model.predict(temperature_input)[0]), 0),
+        }
+    )
+temperature_profile = pd.DataFrame(temperature_rows)
+
+profile_col, sensitivity_col = st.columns(2, gap="large")
+with profile_col:
+    with st.container(border=True):
+        st.subheader("Demand across the day")
+        st.caption("Predicted demand by hour for the selected date, weather, season, and operating status.")
+        st.altair_chart(demand_profile_chart(hourly_profile), width="stretch")
+
+with sensitivity_col:
+    with st.container(border=True):
+        st.subheader("Temperature response")
+        st.caption("Predicted demand across temperature scenarios; the dashed line marks the selected temperature.")
+        st.altair_chart(
+            temperature_sensitivity_chart(temperature_profile, temperature_c),
+            width="stretch",
+        )

@@ -28,6 +28,7 @@ MODEL_PATH = MODELS_DIR / "best_model.pkl"
 METADATA_PATH = MODELS_DIR / "model_metadata.json"
 COMPARISON_PATH = MODELS_DIR / "model_comparison.csv"
 FEATURE_IMPORTANCE_PATH = MODELS_DIR / "feature_importance_best_model.csv"
+TEST_PREDICTIONS_PATH = MODELS_DIR / "test_predictions_best_model.csv"
 
 
 @st.cache_resource
@@ -61,6 +62,13 @@ def load_feature_importance() -> pd.DataFrame:
     importance = pd.read_csv(FEATURE_IMPORTANCE_PATH)
     importance["feature_label"] = importance["feature"].map(format_feature_name)
     return importance
+
+
+@st.cache_data
+def load_test_predictions() -> pd.DataFrame:
+    """Load held-out predictions used by the interactive evaluation charts."""
+
+    return pd.read_csv(TEST_PREDICTIONS_PATH)
 
 
 def build_input_frame(values: dict[str, object]) -> pd.DataFrame:

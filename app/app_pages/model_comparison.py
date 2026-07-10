@@ -12,7 +12,13 @@ APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from app_utils import figure_path, format_feature_name, format_number, load_model_comparison, readable_parameters
+from app_utils import format_feature_name, format_number, load_model_comparison, readable_parameters
+from chart_utils import (
+    error_metrics_chart,
+    fit_quality_dumbbell_chart,
+    rmse_ranking_chart,
+    weak_spot_heatmap,
+)
 
 
 st.title("Model comparison")
@@ -87,42 +93,25 @@ left, right = st.columns(2, gap="large")
 
 with left:
     with st.container(border=True):
-        st.subheader("Saved RMSE chart")
-        st.image(figure_path("08_model_rmse_comparison.png"), caption="Generated model RMSE comparison")
+        st.subheader("RMSE ranking")
+        st.caption("Lower is better. The orange point highlights the model selected for deployment.")
+        st.altair_chart(rmse_ranking_chart(comparison), width="stretch")
 
 with right:
     with st.container(border=True):
         st.subheader("Error metrics by model")
-        error_chart = comparison[["model", "test_mae", "test_rmse", "cross_validation_rmse"]].rename(
-            columns={
-                "model": "Model",
-                "test_mae": "MAE",
-                "test_rmse": "RMSE",
-                "cross_validation_rmse": "Cross-validation RMSE",
-            }
-        )
-        error_long = error_chart.melt("Model", var_name="Metric", value_name="Bike count error")
-        st.bar_chart(
-            error_long,
-            x="Model",
-            y="Bike count error",
-            color="Metric",
-            y_label="Bike count error",
-            stack=False,
-        )
+        st.caption("Grouped bars compare average error, large-error sensitivity, and cross-validation stability.")
+        st.altair_chart(error_metrics_chart(comparison), width="stretch")
 
 with st.container(border=True):
-    st.subheader("Fit quality and overfitting")
-    fit_chart = comparison[["model", "training_r2", "testing_r2", "train_test_r2_gap"]].rename(
-        columns={
-            "model": "Model",
-            "training_r2": "Training R2",
-            "testing_r2": "Testing R2",
-            "train_test_r2_gap": "Train-test R2 gap",
-        }
-    )
-    fit_long = fit_chart.melt("Model", var_name="Measure", value_name="Score")
-    st.bar_chart(fit_long, x="Model", y="Score", color="Measure", y_label="Score", stack=False)
+    st.subheader("Fit quality and overfitting gap")
+    st.caption("Each dumbbell connects testing R2 (blue) to training R2 (orange). A longer connector signals a larger generalisation gap.")
+    st.altair_chart(fit_quality_dumbbell_chart(comparison), width="stretch")
+
+with st.container(border=True):
+    st.subheader("Operational weak spots")
+    st.caption("The heatmap compares each model's worst segment-level mean absolute errors. Darker cells indicate larger operational risk.")
+    st.altair_chart(weak_spot_heatmap(comparison), width="stretch")
 
 st.subheader("How the measures should be read")
 measure_col, interpretation_col = st.columns(2, gap="large")
