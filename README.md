@@ -2,6 +2,8 @@
 
 Project repository: [ngyinhao/data-science-asg](https://github.com/ngyinhao/data-science-asg)
 
+Live application: [data-science-asg.streamlit.app](https://data-science-asg.streamlit.app/)
+
 ## Project Summary
 
 This project is a Streamlit-based web application that estimates hourly bike rental demand in Seoul. It is designed as a decision-support prototype for bike supply planning, helping users explore how time, weather, season, holidays, and operating status may influence expected rented bike counts.
@@ -105,6 +107,8 @@ http://localhost:8501
 ```
 
 ## How to Host the Website Online
+
+The deployed website is available at [https://data-science-asg.streamlit.app/](https://data-science-asg.streamlit.app/).
 
 This project is best suited for Streamlit Community Cloud because the application is already built with Streamlit.
 

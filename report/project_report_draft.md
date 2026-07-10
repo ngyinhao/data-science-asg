@@ -88,6 +88,8 @@ Prototype preview image: `report/prototype_screenshot.png`.
 
 Project source code and deployment files: [ngyinhao/data-science-asg](https://github.com/ngyinhao/data-science-asg).
 
+Live deployed prototype: [data-science-asg.streamlit.app](https://data-science-asg.streamlit.app/).
+
 ## 7. Conclusion
 
 The bike supply planning frame makes the project practical: the model is judged by how well it supports an operations decision, not only by raw accuracy. The selected model should be used as a decision-support tool together with current station inventory, local events, and staff judgement.
