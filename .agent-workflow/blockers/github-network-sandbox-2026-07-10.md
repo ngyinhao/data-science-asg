@@ -9,3 +9,8 @@
 - **Workaround:** Re-run the narrow read-only Git remote command with approved network access.
 - **Prevention:** Expect GitHub remote operations from the managed shell to require scoped network escalation even when local credentials are valid.
 
+## Recurrence (2026-07-11)
+
+- **Context:** Push commit `685fab4` from `main` to `origin`.
+- **Symptom:** `git push origin main` again failed before authentication with `Failed to connect to github.com:443`.
+- **Workaround:** Re-run the scoped push command with approved network access.
