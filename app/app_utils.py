@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-import sys
 from typing import Any
 
 import joblib
@@ -15,15 +14,11 @@ import streamlit as st
 
 APP_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = APP_DIR.parent
-SRC_DIR = PROJECT_ROOT / "src"
 MODELS_DIR = PROJECT_ROOT / "models"
 FIGURES_DIR = PROJECT_ROOT / "figures"
 PREPARED_DATA_PATH = PROJECT_ROOT / "data" / "processed" / "seoul_bike_prepared.csv"
 
-if str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
-
-from data_preprocessing import FEATURE_COLUMNS
+from src.data_preprocessing import FEATURE_COLUMNS
 
 
 MODEL_PATH = MODELS_DIR / "best_model.pkl"

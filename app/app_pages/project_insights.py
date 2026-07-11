@@ -8,18 +8,18 @@ import sys
 import streamlit as st
 
 
-APP_DIR = Path(__file__).resolve().parents[1]
-if str(APP_DIR) not in sys.path:
-    sys.path.insert(0, str(APP_DIR))
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-from app_utils import (
+from app.app_utils import (
     SEASON_ORDER,
     filter_insights_data,
     filtered_data_csv,
     load_prepared_bike_data,
     summarise_demand_insights,
 )
-from eda_chart_utils import (
+from app.eda_chart_utils import (
     SPARSE_BAND_THRESHOLD,
     VARIABLE_OPTIONS,
     build_variable_chart,

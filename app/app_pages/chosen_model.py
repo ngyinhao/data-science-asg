@@ -8,11 +8,11 @@ import sys
 import streamlit as st
 
 
-APP_DIR = Path(__file__).resolve().parents[1]
-if str(APP_DIR) not in sys.path:
-    sys.path.insert(0, str(APP_DIR))
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-from app_utils import (
+from app.app_utils import (
     format_number,
     load_feature_importance,
     load_metadata,
@@ -20,7 +20,7 @@ from app_utils import (
     load_test_predictions,
     selected_model_row,
 )
-from chart_utils import (
+from app.chart_utils import (
     actual_vs_predicted_chart,
     feature_importance_chart,
     hourly_error_chart,

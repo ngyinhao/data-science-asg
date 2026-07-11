@@ -8,12 +8,12 @@ import sys
 import streamlit as st
 
 
-APP_DIR = Path(__file__).resolve().parents[1]
-if str(APP_DIR) not in sys.path:
-    sys.path.insert(0, str(APP_DIR))
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-from app_utils import format_feature_name, format_number, load_model_comparison, readable_parameters
-from chart_utils import (
+from app.app_utils import format_feature_name, format_number, load_model_comparison, readable_parameters
+from app.chart_utils import (
     error_metrics_chart,
     fit_quality_dumbbell_chart,
     rmse_ranking_chart,

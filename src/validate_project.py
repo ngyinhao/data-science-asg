@@ -13,17 +13,16 @@ import pandas as pd
 from data_preprocessing import FEATURE_COLUMNS, PROJECT_ROOT
 
 
-APP_DIR = PROJECT_ROOT / "app"
-if str(APP_DIR) not in sys.path:
-    sys.path.insert(0, str(APP_DIR))
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-from app_utils import (
+from app.app_utils import (
     PREPARED_DATA_COLUMNS,
     filter_insights_data,
     filtered_data_csv,
     prepare_insights_data,
 )
-from eda_chart_utils import (
+from app.eda_chart_utils import (
     VARIABLE_OPTIONS,
     build_variable_chart,
     correlation_heatmap,

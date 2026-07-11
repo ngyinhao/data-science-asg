@@ -7,13 +7,13 @@ from typing import Any
 import altair as alt
 import pandas as pd
 
-from app_utils import (
+from app.app_utils import (
     CONTINUOUS_INSIGHT_VARIABLES,
     RAINFALL_BAND_ORDER,
     SEASON_ORDER,
     SNOWFALL_BAND_ORDER,
 )
-from chart_utils import BLUE, LIGHT_BLUE, NEUTRAL, ORANGE
+from app.chart_utils import BLUE, LIGHT_BLUE, NEUTRAL, ORANGE
 
 
 TARGET_COLUMN = "rented_bike_count"

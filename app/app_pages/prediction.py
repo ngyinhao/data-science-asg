@@ -9,12 +9,12 @@ import pandas as pd
 import streamlit as st
 
 
-APP_DIR = Path(__file__).resolve().parents[1]
-if str(APP_DIR) not in sys.path:
-    sys.path.insert(0, str(APP_DIR))
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-from app_utils import build_input_frame, load_metadata, load_model
-from chart_utils import demand_profile_chart, supply_buffer_chart, temperature_sensitivity_chart
+from app.app_utils import build_input_frame, load_metadata, load_model
+from app.chart_utils import demand_profile_chart, supply_buffer_chart, temperature_sensitivity_chart
 
 
 st.title("Prediction")
