@@ -8,6 +8,7 @@ import sys
 from typing import Any
 
 import joblib
+import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -17,6 +18,7 @@ PROJECT_ROOT = APP_DIR.parent
 SRC_DIR = PROJECT_ROOT / "src"
 MODELS_DIR = PROJECT_ROOT / "models"
 FIGURES_DIR = PROJECT_ROOT / "figures"
+PREPARED_DATA_PATH = PROJECT_ROOT / "data" / "processed" / "seoul_bike_prepared.csv"
 
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
@@ -29,6 +31,46 @@ METADATA_PATH = MODELS_DIR / "model_metadata.json"
 COMPARISON_PATH = MODELS_DIR / "model_comparison.csv"
 FEATURE_IMPORTANCE_PATH = MODELS_DIR / "feature_importance_best_model.csv"
 TEST_PREDICTIONS_PATH = MODELS_DIR / "test_predictions_best_model.csv"
+
+SEASON_ORDER = ["Spring", "Summer", "Autumn", "Winter"]
+RAINFALL_BAND_ORDER = ["No rain", "Light rain", "Moderate rain", "Heavy rain"]
+SNOWFALL_BAND_ORDER = ["No snow", "Light snow", "Heavier snow"]
+PREPARED_DATA_COLUMNS = [
+    "date",
+    "rented_bike_count",
+    "hour",
+    "temperature_c",
+    "humidity_pct",
+    "wind_speed_m_per_s",
+    "visibility_10m",
+    "dew_point_temperature_c",
+    "solar_radiation_mj_per_m2",
+    "rainfall_mm",
+    "snowfall_cm",
+    "seasons",
+    "holiday",
+    "functioning_day",
+    "month",
+    "day",
+    "weekday",
+    "is_weekend",
+]
+CONTINUOUS_INSIGHT_VARIABLES = {
+    "temperature_c": {"label": "Temperature", "unit": "°C", "decimals": 1},
+    "humidity_pct": {"label": "Humidity", "unit": "%", "decimals": 0},
+    "wind_speed_m_per_s": {"label": "Wind speed", "unit": "m/s", "decimals": 1},
+    "visibility_10m": {"label": "Visibility", "unit": "10 m", "decimals": 0},
+    "dew_point_temperature_c": {
+        "label": "Dew-point temperature",
+        "unit": "°C",
+        "decimals": 1,
+    },
+    "solar_radiation_mj_per_m2": {
+        "label": "Solar radiation",
+        "unit": "MJ/m²",
+        "decimals": 2,
+    },
+}
 
 
 @st.cache_resource
@@ -69,6 +111,150 @@ def load_test_predictions() -> pd.DataFrame:
     """Load held-out predictions used by the interactive evaluation charts."""
 
     return pd.read_csv(TEST_PREDICTIONS_PATH)
+
+
+def _format_bin_edge(value: float, decimals: int) -> str:
+    """Format one bin boundary without exposing floating-point noise."""
+
+    return f"{value:,.{decimals}f}"
+
+
+def prepare_insights_data(frame: pd.DataFrame) -> pd.DataFrame:
+    """Create reusable readable fields and stable bins for the insights page."""
+
+    missing_columns = [column for column in PREPARED_DATA_COLUMNS if column not in frame.columns]
+    if missing_columns:
+        raise ValueError(f"Prepared bike data is missing required columns: {missing_columns}")
+
+    prepared = frame.copy()
+    prepared["date"] = pd.to_datetime(prepared["date"], errors="raise")
+    prepared["hour_label"] = prepared["hour"].map(lambda hour: f"{int(hour):02d}:00")
+    prepared["holiday_label"] = prepared["holiday"].map(
+        {"No Holiday": "No holiday", "Holiday": "Holiday"}
+    )
+    prepared["functioning_day_label"] = prepared["functioning_day"].map(
+        {"Yes": "Functioning", "No": "Not functioning"}
+    )
+    prepared["rainfall_band"] = pd.cut(
+        prepared["rainfall_mm"],
+        bins=[-np.inf, 0, 1, 5, np.inf],
+        labels=RAINFALL_BAND_ORDER,
+        ordered=True,
+    )
+    prepared["snowfall_band"] = pd.cut(
+        prepared["snowfall_cm"],
+        bins=[-np.inf, 0, 1, np.inf],
+        labels=SNOWFALL_BAND_ORDER,
+        ordered=True,
+    )
+
+    for column, specification in CONTINUOUS_INSIGHT_VARIABLES.items():
+        _, edges = pd.qcut(prepared[column], q=10, retbins=True, duplicates="drop")
+        bin_index = pd.cut(
+            prepared[column],
+            bins=edges,
+            labels=False,
+            include_lowest=True,
+        )
+        if bin_index.isna().any():
+            raise ValueError(f"Unable to assign every {column} value to a fixed analysis bin.")
+
+        decimals = int(specification["decimals"])
+        unit = str(specification["unit"])
+        labels = [
+            (
+                f"{_format_bin_edge(float(edges[index]), decimals)} to "
+                f"{_format_bin_edge(float(edges[index + 1]), decimals)} {unit}"
+            )
+            for index in range(len(edges) - 1)
+        ]
+        index_values = bin_index.astype("int64")
+        prepared[f"{column}_bin_index"] = index_values
+        prepared[f"{column}_bin_lower"] = index_values.map(
+            {index: float(edges[index]) for index in range(len(edges) - 1)}
+        )
+        prepared[f"{column}_bin_upper"] = index_values.map(
+            {index: float(edges[index + 1]) for index in range(len(edges) - 1)}
+        )
+        prepared[f"{column}_bin_midpoint"] = (
+            prepared[f"{column}_bin_lower"] + prepared[f"{column}_bin_upper"]
+        ) / 2
+        prepared[f"{column}_bin_label"] = pd.Categorical(
+            index_values.map(dict(enumerate(labels))),
+            categories=labels,
+            ordered=True,
+        )
+
+    return prepared
+
+
+@st.cache_data(max_entries=1)
+def load_prepared_bike_data() -> pd.DataFrame:
+    """Load and enrich the complete prepared historical dataset once."""
+
+    prepared = pd.read_csv(PREPARED_DATA_PATH)
+    if len(prepared) != 8_760:
+        raise ValueError(f"Prepared bike data should contain 8,760 rows, found {len(prepared):,}.")
+    return prepare_insights_data(prepared)
+
+
+def filter_insights_data(
+    data: pd.DataFrame,
+    seasons: list[str],
+    functioning_scope: str,
+) -> pd.DataFrame:
+    """Apply inexpensive page filters after the cached full-data load."""
+
+    filtered = data.loc[data["seasons"].isin(seasons)]
+    functioning_values = {
+        "Functioning days": "Yes",
+        "Not functioning": "No",
+    }
+    if functioning_scope in functioning_values:
+        filtered = filtered.loc[
+            filtered["functioning_day"] == functioning_values[functioning_scope]
+        ]
+    elif functioning_scope != "All days":
+        raise ValueError(f"Unknown functioning-day scope: {functioning_scope}")
+    return filtered.copy()
+
+
+def summarise_demand_insights(data: pd.DataFrame) -> dict[str, object]:
+    """Recalculate the headline EDA findings from the prepared dataset."""
+
+    target = "rented_bike_count"
+    hourly_mean = data.groupby("hour", observed=True)[target].mean()
+    seasonal_mean = data.groupby("seasons", observed=True)[target].mean()
+    non_functioning = data.loc[data["functioning_day"] == "No", target]
+    peak_hour = int(hourly_mean.idxmax())
+    lowest_hour = int(hourly_mean.idxmin())
+    highest_season = str(seasonal_mean.idxmax())
+    lowest_season = str(seasonal_mean.idxmin())
+    return {
+        "peak_hour": peak_hour,
+        "peak_hour_mean": float(hourly_mean.loc[peak_hour]),
+        "lowest_hour": lowest_hour,
+        "lowest_hour_mean": float(hourly_mean.loc[lowest_hour]),
+        "highest_season": highest_season,
+        "highest_season_mean": float(seasonal_mean.loc[highest_season]),
+        "lowest_season": lowest_season,
+        "lowest_season_mean": float(seasonal_mean.loc[lowest_season]),
+        "temperature_correlation": float(data["temperature_c"].corr(data[target])),
+        "dry_hour_mean": float(data.loc[data["rainfall_mm"] == 0, target].mean()),
+        "heavy_rain_mean": float(data.loc[data["rainfall_mm"] >= 5, target].mean()),
+        "no_snow_mean": float(data.loc[data["snowfall_cm"] == 0, target].mean()),
+        "snow_mean": float(data.loc[data["snowfall_cm"] > 0, target].mean()),
+        "non_functioning_mean": float(non_functioning.mean()),
+        "non_functioning_rows": int(len(non_functioning)),
+    }
+
+
+def filtered_data_csv(data: pd.DataFrame) -> bytes:
+    """Serialize only original historical columns from the active population."""
+
+    export = data.loc[:, PREPARED_DATA_COLUMNS].copy()
+    export["date"] = pd.to_datetime(export["date"]).dt.strftime("%Y-%m-%d")
+    return export.to_csv(index=False).encode("utf-8")
 
 
 def build_input_frame(values: dict[str, object]) -> pd.DataFrame:

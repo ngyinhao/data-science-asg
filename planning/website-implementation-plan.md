@@ -119,8 +119,21 @@ The final website should allow the user to:
 - understand which model is used in the prediction system,
 - see why the selected model was chosen based on performance and suitability.
 
+## Confirmed submission enhancement awaiting implementation
+
+A fourth page titled `Project insights` is documented in [`planning/demand-drivers-implementation-plan.md`](demand-drivers-implementation-plan.md).
+
+The interview confirmed that this page is required for submission and that all twelve variables must be individually selectable. It will present interactive EDA showing how individual time, weather, calendar, and operating variables are associated with rented-bike demand. It is **not yet implemented or deployed**. The dedicated plan contains the confirmed UI behaviour, chart contract, data requirements, acceptance criteria, and remaining approval step.
+
 ## Recommended final page flow
 
 1. `Prediction` page for forecasting demand
 2. `Model comparison` page for comparing all models
 3. `Why this model was chosen` page for final model justification
+
+The confirmed navigation flow is:
+
+1. `Prediction`
+2. `Project insights`
+3. `Model comparison`
+4. `Why this model was chosen`

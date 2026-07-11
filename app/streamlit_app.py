@@ -27,6 +27,11 @@ page = st.navigation(
             icon=":material/query_stats:",
         ),
         st.Page(
+            APP_DIR / "app_pages" / "project_insights.py",
+            title="Project insights",
+            icon=":material/insights:",
+        ),
+        st.Page(
             APP_DIR / "app_pages" / "model_comparison.py",
             title="Model comparison",
             icon=":material/bar_chart:",

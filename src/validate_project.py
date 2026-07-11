@@ -3,12 +3,34 @@
 from __future__ import annotations
 
 import json
+from io import BytesIO
 from pathlib import Path
+import sys
 
 import joblib
 import pandas as pd
 
 from data_preprocessing import FEATURE_COLUMNS, PROJECT_ROOT
+
+
+APP_DIR = PROJECT_ROOT / "app"
+if str(APP_DIR) not in sys.path:
+    sys.path.insert(0, str(APP_DIR))
+
+from app_utils import (
+    PREPARED_DATA_COLUMNS,
+    filter_insights_data,
+    filtered_data_csv,
+    prepare_insights_data,
+)
+from eda_chart_utils import (
+    VARIABLE_OPTIONS,
+    build_variable_chart,
+    correlation_heatmap,
+    default_functioning_scope,
+    hour_season_heatmap,
+    hour_season_scale_max,
+)
 
 
 REQUIRED_PATHS = [
@@ -21,6 +43,8 @@ REQUIRED_PATHS = [
     "src/train_models.py",
     "src/create_project_artifacts.py",
     "app/streamlit_app.py",
+    "app/app_pages/project_insights.py",
+    "app/eda_chart_utils.py",
     "models/multiple_linear_regression.pkl",
     "models/decision_tree_regressor.pkl",
     "models/random_forest_regressor.pkl",
@@ -47,7 +71,34 @@ REQUIRED_PATHS = [
     "report/project_report_draft.md",
     "report/eda_observations.md",
     "report/prototype_screenshot.png",
+    "planning/interactive-chart-map.md",
     "scripts/run_streamlit.ps1",
+]
+
+REQUIRED_INSIGHT_COLUMNS = [
+    "date",
+    "rented_bike_count",
+    "hour",
+    "temperature_c",
+    "humidity_pct",
+    "wind_speed_m_per_s",
+    "visibility_10m",
+    "dew_point_temperature_c",
+    "solar_radiation_mj_per_m2",
+    "rainfall_mm",
+    "snowfall_cm",
+    "seasons",
+    "holiday",
+    "functioning_day",
+]
+
+CONTINUOUS_INSIGHT_COLUMNS = [
+    "temperature_c",
+    "humidity_pct",
+    "wind_speed_m_per_s",
+    "visibility_10m",
+    "dew_point_temperature_c",
+    "solar_radiation_mj_per_m2",
 ]
 
 REQUIRED_COMPARISON_COLUMNS = [
@@ -88,6 +139,89 @@ def validate() -> dict[str, object]:
 
     if prepared.shape[0] != 8760:
         raise AssertionError(f"Prepared row count should be 8760, found {prepared.shape[0]}")
+    missing_insight_columns = [
+        column for column in REQUIRED_INSIGHT_COLUMNS if column not in prepared.columns
+    ]
+    if missing_insight_columns:
+        raise AssertionError(f"Prepared data is missing insight columns: {missing_insight_columns}")
+    if set(prepared["seasons"].unique()) != {"Spring", "Summer", "Autumn", "Winter"}:
+        raise AssertionError("Prepared seasons must contain the four expected categories.")
+    if set(prepared["holiday"].unique()) != {"No Holiday", "Holiday"}:
+        raise AssertionError("Prepared holiday values are not the two expected categories.")
+    if set(prepared["functioning_day"].unique()) != {"Yes", "No"}:
+        raise AssertionError("Prepared functioning-day values are not the two expected categories.")
+
+    rainfall_band_counts = [
+        int((prepared["rainfall_mm"] == 0).sum()),
+        int(((prepared["rainfall_mm"] > 0) & (prepared["rainfall_mm"] <= 1)).sum()),
+        int(((prepared["rainfall_mm"] > 1) & (prepared["rainfall_mm"] <= 5)).sum()),
+        int((prepared["rainfall_mm"] > 5).sum()),
+    ]
+    if rainfall_band_counts != [8232, 280, 182, 66]:
+        raise AssertionError(f"Unexpected rainfall-band counts: {rainfall_band_counts}")
+
+    snowfall_band_counts = [
+        int((prepared["snowfall_cm"] == 0).sum()),
+        int(((prepared["snowfall_cm"] > 0) & (prepared["snowfall_cm"] <= 1)).sum()),
+        int((prepared["snowfall_cm"] > 1).sum()),
+    ]
+    if snowfall_band_counts != [8317, 255, 188]:
+        raise AssertionError(f"Unexpected snowfall-band counts: {snowfall_band_counts}")
+
+    non_functioning = prepared.loc[prepared["functioning_day"] == "No", "rented_bike_count"]
+    if len(non_functioning) != 295 or not non_functioning.eq(0).all():
+        raise AssertionError("All 295 non-functioning records must retain zero observed demand.")
+
+    minimum_continuous_bin_counts = {}
+    for column in CONTINUOUS_INSIGHT_COLUMNS:
+        _, edges = pd.qcut(prepared[column], q=10, retbins=True, duplicates="drop")
+        counts = pd.cut(prepared[column], bins=edges, include_lowest=True).value_counts()
+        minimum_continuous_bin_counts[column] = int(counts.min())
+    if min(minimum_continuous_bin_counts.values()) < 30:
+        raise AssertionError(
+            f"A full-data continuous insight bin is too sparse: {minimum_continuous_bin_counts}"
+        )
+
+    insights_data = prepare_insights_data(prepared)
+    insight_chart_dataset_counts = {}
+    for variable in VARIABLE_OPTIONS:
+        filtered = filter_insights_data(
+            insights_data,
+            ["Spring", "Summer", "Autumn", "Winter"],
+            default_functioning_scope(variable),
+        )
+        chart_spec = build_variable_chart(filtered, variable).to_dict()
+        dataset_counts = [len(rows) for rows in chart_spec.get("datasets", {}).values()]
+        if not dataset_counts or any(count == 0 for count in dataset_counts):
+            raise AssertionError(
+                f"Insight chart {variable!r} has an empty rendered layer: {dataset_counts}"
+            )
+        insight_chart_dataset_counts[variable] = dataset_counts
+
+    all_days = filter_insights_data(
+        insights_data,
+        ["Spring", "Summer", "Autumn", "Winter"],
+        "All days",
+    )
+    functioning_days = filter_insights_data(
+        insights_data,
+        ["Spring", "Summer", "Autumn", "Winter"],
+        "Functioning days",
+    )
+    not_functioning = filter_insights_data(
+        insights_data,
+        ["Spring", "Summer", "Autumn", "Winter"],
+        "Not functioning",
+    )
+    if [len(all_days), len(functioning_days), len(not_functioning)] != [8760, 8465, 295]:
+        raise AssertionError("The insights functioning-day filters returned unexpected row counts.")
+
+    export = pd.read_csv(BytesIO(filtered_data_csv(functioning_days)))
+    if list(export.columns) != PREPARED_DATA_COLUMNS or len(export) != len(functioning_days):
+        raise AssertionError("Filtered CSV must contain only source columns and active rows.")
+
+    hour_season_heatmap(all_days, hour_season_scale_max(insights_data)).to_dict()
+    correlation_heatmap(all_days).to_dict()
     if comparison["model"].nunique() != 4:
         raise AssertionError("The comparison table must contain four distinct models.")
     if comparison.shape[1] < 15:
@@ -127,6 +261,15 @@ def validate() -> dict[str, object]:
         "comparison_point_count": int(comparison.shape[1]),
         "selected_model": metadata["selected_model"],
         "sample_prediction": round(prediction, 2),
+        "rainfall_band_counts": rainfall_band_counts,
+        "snowfall_band_counts": snowfall_band_counts,
+        "minimum_continuous_bin_counts": minimum_continuous_bin_counts,
+        "insight_chart_dataset_counts": insight_chart_dataset_counts,
+        "insight_filter_row_counts": {
+            "all_days": len(all_days),
+            "functioning_days": len(functioning_days),
+            "not_functioning": len(not_functioning),
+        },
         "required_paths_checked": len(REQUIRED_PATHS),
     }
 
