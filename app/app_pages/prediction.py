@@ -118,26 +118,32 @@ with chart_col:
 st.subheader("Interactive scenario analysis")
 st.caption("These views hold the other inputs constant, so they describe the model's response—not a causal effect.")
 
-profile_rows = []
+profile_inputs = []
 for profile_hour in range(24):
     profile_input = input_frame.copy()
     profile_input.loc[0, "hour"] = profile_hour
-    profile_rows.append(
-        {"hour": profile_hour, "predicted_bikes": max(float(model.predict(profile_input)[0]), 0)}
-    )
-hourly_profile = pd.DataFrame(profile_rows)
+    profile_inputs.append(profile_input)
+hourly_predictions = model.predict(pd.concat(profile_inputs, ignore_index=True))
+hourly_profile = pd.DataFrame(
+    {
+        "hour": range(24),
+        "predicted_bikes": [max(float(value), 0) for value in hourly_predictions],
+    }
+)
 
-temperature_rows = []
-for profile_temperature in range(-15, 36, 3):
+profile_temperatures = list(range(-15, 36, 3))
+temperature_inputs = []
+for profile_temperature in profile_temperatures:
     temperature_input = input_frame.copy()
     temperature_input.loc[0, "temperature_c"] = float(profile_temperature)
-    temperature_rows.append(
-        {
-            "temperature_c": float(profile_temperature),
-            "predicted_bikes": max(float(model.predict(temperature_input)[0]), 0),
-        }
-    )
-temperature_profile = pd.DataFrame(temperature_rows)
+    temperature_inputs.append(temperature_input)
+temperature_predictions = model.predict(pd.concat(temperature_inputs, ignore_index=True))
+temperature_profile = pd.DataFrame(
+    {
+        "temperature_c": [float(value) for value in profile_temperatures],
+        "predicted_bikes": [max(float(value), 0) for value in temperature_predictions],
+    }
+)
 
 profile_col, sensitivity_col = st.columns(2, gap="large")
 with profile_col:

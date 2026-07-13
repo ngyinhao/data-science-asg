@@ -42,6 +42,21 @@ screen.
 - Updated the README to recommend `streamlit_app.py` for local and Community Cloud
   startup.
 
+## Cloud follow-up
+
+- Owner access confirmed that the existing deployment correctly targets
+  `main/app/streamlit_app.py`; the missing root launcher was a resilience gap but not
+  the active deployment path.
+- Community Cloud was configured for Python 3.14 even though the project runtime is
+  Python 3.12. The setting was changed to Python 3.12 and the app was rebooted.
+- The clean Python 3.12.13 rebuild installed all pinned dependencies, started Uvicorn,
+  and then terminated the Streamlit process with a native segmentation fault.
+- The selected Random Forest had been serialized with `n_jobs=-1`, and the prediction
+  page invoked it repeatedly during initial rendering. Model loading now forces
+  single-worker inference, and scenario profiles are predicted in two batches instead
+  of 41 separate calls to avoid native thread-pool pressure in the constrained Cloud
+  runtime.
+
 ## Verification and remaining owner action
 
 Both entry points must pass local startup and page checks before this incident is

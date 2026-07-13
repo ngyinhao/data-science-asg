@@ -70,9 +70,13 @@ CONTINUOUS_INSIGHT_VARIABLES = {
 
 @st.cache_resource
 def load_model() -> Any:
-    """Load the selected prediction model once per Streamlit process."""
+    """Load the selected prediction model with deployment-safe parallelism."""
 
-    return joblib.load(MODEL_PATH)
+    model = joblib.load(MODEL_PATH)
+    estimator = getattr(model, "named_steps", {}).get("model")
+    if estimator is not None and hasattr(estimator, "n_jobs"):
+        estimator.n_jobs = 1
+    return model
 
 
 @st.cache_data
