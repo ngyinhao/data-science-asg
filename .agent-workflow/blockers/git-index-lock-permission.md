@@ -21,3 +21,7 @@ The workspace allows writes to project files but restricts writes inside the `.g
 ## Workaround
 
 Run the required Git staging/commit command with elevated permission. If this recurs, grant elevated access for the narrowly scoped Git commands.
+
+## Recurrence — 2026-07-13
+
+Staging the Streamlit deployment recovery with `git add --all` again failed because the managed workspace could not create `.git/index.lock`. The repository files remained unchanged and unstaged. Reuse the validated workaround: rerun the narrowly scoped staging command with elevated permission.

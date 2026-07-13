@@ -41,6 +41,7 @@ REQUIRED_PATHS = [
     "src/data_preprocessing.py",
     "src/train_models.py",
     "src/create_project_artifacts.py",
+    "streamlit_app.py",
     "app/streamlit_app.py",
     "app/app_pages/project_insights.py",
     "app/eda_chart_utils.py",

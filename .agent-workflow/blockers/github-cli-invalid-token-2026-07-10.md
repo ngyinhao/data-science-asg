@@ -7,5 +7,6 @@
 - **Cause:** The locally stored GitHub CLI credential has expired, been revoked, or is otherwise no longer accepted.
 - **Troubleshooting:** Confirmed that GitHub CLI 2.96.0 is installed; authentication is the failing prerequisite.
 - **Recurrence:** A follow-up `gh auth status` check produced the same invalid-token result while investigating how earlier pushes succeeded, confirming this is persistent rather than a transient network failure.
+- **Recurrence (2026-07-13):** Publishing the root Streamlit deployment launcher to restore Community Cloud hosting was blocked by the same invalid token. GitHub CLI 2.96.0 still identifies `ngyinhao` as the active account but rejects its credential. The verified deployment changes remain unstaged and uncommitted so authentication can be repaired without leaving a partial publish operation.
 - **Remaining limitation:** The user must re-authenticate GitHub CLI interactively before publishing can resume.
 - **Prevention:** Run `gh auth status` before starting branch or staging operations, and refresh credentials with `gh auth login -h github.com` when the active token is invalid.

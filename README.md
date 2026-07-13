@@ -95,8 +95,11 @@ You can use the helper script:
 Or run Streamlit directly:
 
 ```powershell
-python -m streamlit run app\streamlit_app.py
+python -m streamlit run streamlit_app.py
 ```
+
+The root launcher keeps the conventional Streamlit Community Cloud entry-point path
+valid while page implementations stay organized in the `app/` package.
 
 ### 4. Open the website
 
@@ -118,7 +121,8 @@ This project is best suited for Streamlit Community Cloud because the applicatio
 
 Before deployment, make sure the project includes:
 
-- `app/streamlit_app.py`
+- `streamlit_app.py` (recommended deployment entry point)
+- `app/streamlit_app.py` (application implementation)
 - `requirements.txt`
 - the `models/` folder with the trained model files
 - the required data or generated assets used by the app
@@ -132,7 +136,7 @@ Push the full project to a Git hosting service such as GitHub.
 - Sign in to Streamlit Community Cloud
 - Choose to create a new app from your repository
 - Select the repository and branch
-- Set the main file path to `app/streamlit_app.py`
+- Set the main file path to `streamlit_app.py`
 - Start the deployment
 
 ### 4. Verify the deployment
