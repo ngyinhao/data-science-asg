@@ -26,3 +26,9 @@ A compiled scientific dependency or serialized model-loading path is crashing du
 ## Remaining work
 
 Isolate whether the crash occurs before or during `joblib.load(models/best_model.pkl)`, then remove the incompatible native boundary or pin a known-compatible Linux wheel set. Reboot and verify the public Prediction page after each evidence-based change.
+
+## Resolution
+
+The selected Random Forest was serialized with `n_jobs=-1`, and the Prediction page invoked `predict` 42 times during its initial render (the displayed scenario plus 24 hourly and 17 temperature scenarios). In the constrained Cloud worker, this native parallel workload coincided with the process-level segmentation fault.
+
+The deployed fix loads the estimator with `n_jobs=1` and batches the hourly and temperature scenarios into two prediction calls. After pushing commit `ad051e4` and performing a full reboot, the Python 3.12 worker remained alive. The public Prediction page rendered, all three Vega charts were present, and no Streamlit exception was found.

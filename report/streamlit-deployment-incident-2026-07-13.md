@@ -65,3 +65,16 @@ If the public page still fails, open **Manage app**, download the owner-only log
 use its first Python traceback or dependency-install error as the authoritative next
 diagnostic. Confirm that the deployment coordinates are repository `main` with main
 file path `streamlit_app.py` and Python 3.12.
+
+## Final hosted verification
+
+Community Cloud remains configured for its existing `app/streamlit_app.py` entry
+point on `main`, with Python 3.12. After commit `ad051e4` and a full worker reboot:
+
+- the public URL rendered the **Prediction** page,
+- the prediction result section was present,
+- all three expected Vega charts rendered, and
+- no Streamlit exception element was present.
+
+The hosted application is operational at
+<https://data-science-asg.streamlit.app/>.
