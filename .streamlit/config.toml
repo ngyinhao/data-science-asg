@@ -1,0 +1,30 @@
+[theme]
+font = "sans-serif"
+headingFont = "sans-serif"
+baseFontSize = 18
+baseFontWeight = 450
+headingFontSizes = ["2.25rem", "1.75rem", "1.4rem", "1.15rem", "1rem", "0.9rem"]
+headingFontWeights = [750, 700, 700, 650, 650, 600]
+baseRadius = "small"
+buttonRadius = "small"
+showWidgetBorder = true
+showSidebarBorder = true
+chartCategoricalColors = ["#2F81F7", "#F0883E", "#3FB950", "#D2A8FF", "#FF7B72", "#A5D6FF", "#E3B341"]
+
+[theme.light]
+primaryColor = "#0759C7"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F2F5F8"
+textColor = "#111827"
+borderColor = "#667085"
+dataframeBorderColor = "#667085"
+dataframeHeaderBackgroundColor = "#E5EAF0"
+
+[theme.dark]
+primaryColor = "#58A6FF"
+backgroundColor = "#0B0F14"
+secondaryBackgroundColor = "#171D26"
+textColor = "#F3F6FA"
+borderColor = "#8B98A8"
+dataframeBorderColor = "#8B98A8"
+dataframeHeaderBackgroundColor = "#252D38"

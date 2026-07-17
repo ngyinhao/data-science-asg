@@ -1,5 +1,11 @@
 # Git index lock creation blocked by sandbox permissions
 
+## Recurrence during dashboard update publishing
+
+- `git add --all` again failed before staging because the managed workspace could not create `.git/index.lock`.
+- The validation and scope inspection had completed successfully, and the failed command left the index unchanged.
+- Reuse the established workaround: rerun only the explicitly authorized staging operation with elevated permission.
+
 ## Context and intended action
 
 After the user approved committing all working-tree changes, the workflow ran `git add --all` to stage the repository.

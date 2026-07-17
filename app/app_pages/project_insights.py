@@ -17,6 +17,7 @@ from app.app_utils import (
     filter_insights_data,
     filtered_data_csv,
     load_prepared_bike_data,
+    render_metric_grid,
     summarise_demand_insights,
 )
 from app.eda_chart_utils import (
@@ -33,6 +34,7 @@ from app.eda_chart_utils import (
     variable_takeaway,
     variable_unit,
 )
+from app.chart_utils import ocr_chart
 
 
 VARIABLE_KEY = "insights_variable"
@@ -78,60 +80,53 @@ headline = summarise_demand_insights(data)
 st.subheader("Full-year findings")
 st.caption("One row represents one hour, and the target is the number of bikes rented in that hour.")
 
-with st.container(horizontal=True):
-    st.metric(
-        "Peak mean-demand hour",
-        f"{int(headline['peak_hour']):02d}:00",
-        border=True,
-        help=f"Mean demand: {float(headline['peak_hour_mean']):,.1f} bikes per hour.",
-    )
-    st.metric(
-        "Lowest mean-demand hour",
-        f"{int(headline['lowest_hour']):02d}:00",
-        border=True,
-        help=f"Mean demand: {float(headline['lowest_hour_mean']):,.1f} bikes per hour.",
-    )
-    st.metric(
-        "Highest-demand season",
-        str(headline["highest_season"]),
-        border=True,
-        help=(
-            f"Mean demand: {float(headline['highest_season_mean']):,.1f}. "
-            f"{headline['lowest_season']} is lowest at {float(headline['lowest_season_mean']):,.1f}."
-        ),
-    )
-    st.metric(
-        "Temperature correlation",
-        f"{float(headline['temperature_correlation']):+.2f}",
-        border=True,
-        help="Pearson correlation with hourly rented-bike demand.",
-    )
-
-with st.container(horizontal=True):
-    st.metric(
-        "Dry-hour mean",
-        f"{float(headline['dry_hour_mean']):,.0f} bikes",
-        border=True,
-        help="Hours with exactly 0 mm of rainfall.",
-    )
-    st.metric(
-        "At least 5 mm rain",
-        f"{float(headline['heavy_rain_mean']):,.0f} bikes",
-        border=True,
-        help="Mean demand during hours with rainfall greater than or equal to 5 mm.",
-    )
-    st.metric(
-        "No snow vs snow",
-        f"{float(headline['no_snow_mean']):,.0f} vs {float(headline['snow_mean']):,.0f}",
-        border=True,
-        help="Mean hourly demand with 0 cm of snow compared with any recorded snow.",
-    )
-    st.metric(
-        "Non-functioning mean",
-        f"{float(headline['non_functioning_mean']):,.0f} bikes",
-        border=True,
-        help=f"All {int(headline['non_functioning_rows']):,} non-functioning records have zero rentals.",
-    )
+render_metric_grid(
+    [
+        {
+            "label": "Peak mean-demand hour",
+            "value": f"{int(headline['peak_hour']):02d}:00",
+            "help": f"Mean demand: {float(headline['peak_hour_mean']):,.1f} bikes per hour.",
+        },
+        {
+            "label": "Lowest mean-demand hour",
+            "value": f"{int(headline['lowest_hour']):02d}:00",
+            "help": f"Mean demand: {float(headline['lowest_hour_mean']):,.1f} bikes per hour.",
+        },
+        {
+            "label": "Highest-demand season",
+            "value": str(headline["highest_season"]),
+            "help": (
+                f"Mean demand: {float(headline['highest_season_mean']):,.1f}. "
+                f"{headline['lowest_season']} is lowest at {float(headline['lowest_season_mean']):,.1f}."
+            ),
+        },
+        {
+            "label": "Temperature correlation",
+            "value": f"{float(headline['temperature_correlation']):+.2f}",
+            "help": "Pearson correlation with hourly rented-bike demand.",
+        },
+        {
+            "label": "Dry-hour mean",
+            "value": f"{float(headline['dry_hour_mean']):,.0f} bikes",
+            "help": "Hours with exactly 0 mm of rainfall.",
+        },
+        {
+            "label": "At least 5 mm rain",
+            "value": f"{float(headline['heavy_rain_mean']):,.0f} bikes",
+            "help": "Mean demand during hours with rainfall greater than or equal to 5 mm.",
+        },
+        {
+            "label": "No snow vs snow",
+            "value": f"{float(headline['no_snow_mean']):,.0f} vs {float(headline['snow_mean']):,.0f}",
+            "help": "Mean hourly demand with 0 cm of snow compared with any recorded snow.",
+        },
+        {
+            "label": "Non-functioning mean",
+            "value": f"{float(headline['non_functioning_mean']):,.0f} bikes",
+            "help": f"All {int(headline['non_functioning_rows']):,} non-functioning records have zero rentals.",
+        },
+    ]
+)
 
 with st.container(border=True):
     st.subheader("Explorer filters")
@@ -193,7 +188,7 @@ with st.container(border=True):
     st.markdown(f"**Active population:** {population_description}")
     st.caption(f"Variable unit: {variable_unit(str(selected_variable))}. Hover for exact values and sample sizes.")
     st.altair_chart(
-        build_variable_chart(filtered, str(selected_variable)),
+        ocr_chart(build_variable_chart(filtered, str(selected_variable))),
         width="stretch",
     )
     st.markdown(f"**Takeaway:** {variable_takeaway(filtered, str(selected_variable))}")
@@ -217,7 +212,7 @@ with st.container(border=True):
     )
     st.markdown(f"**Active population:** {population_description}")
     st.altair_chart(
-        hour_season_heatmap(filtered, hour_season_scale_max(data)),
+        ocr_chart(hour_season_heatmap(filtered, hour_season_scale_max(data))),
         width="stretch",
     )
     st.markdown(f"**Takeaway:** {hour_season_takeaway(filtered)}")
@@ -228,7 +223,7 @@ with st.container(border=True):
         "Pearson correlations summarise linear relationships between demand and each of the nine numeric explorer variables. A grey N/A cell means one variable is constant in the active population."
     )
     st.markdown(f"**Active population:** {population_description}")
-    st.altair_chart(correlation_heatmap(filtered), width="stretch")
+    st.altair_chart(ocr_chart(correlation_heatmap(filtered)), width="stretch")
     st.caption("Correlation coefficients range from -1 to +1. Correlation does not prove causation.")
 
 st.subheader("Interpretation and limitations")

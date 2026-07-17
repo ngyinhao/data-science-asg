@@ -18,12 +18,14 @@ from app.app_utils import (
     load_metadata,
     load_model_comparison,
     load_test_predictions,
+    render_metric_grid,
     selected_model_row,
 )
 from app.chart_utils import (
     actual_vs_predicted_chart,
     feature_importance_chart,
     hourly_error_chart,
+    ocr_chart,
     residual_histogram,
     seasonal_error_box_chart,
 )
@@ -44,17 +46,24 @@ rmse_gap = float(runner_up["test_rmse"] - selected["test_rmse"])
 st.badge(selected_name, icon=":material/verified:", color="green")
 st.markdown(f"**Selection reason:** {metadata['selected_model_reason']}")
 
-with st.container(horizontal=True):
-    st.metric("Test RMSE", format_number(float(selected["test_rmse"]), 1), border=True)
-    st.metric("Test MAE", format_number(float(selected["test_mae"]), 1), border=True)
-    st.metric("Test R2", f"{float(selected['test_r2']):.3f}", border=True)
-    st.metric("RMSE advantage", format_number(rmse_gap, 1), "vs next-best model", border=True)
+render_metric_grid(
+    [
+        {"label": "Test RMSE", "value": format_number(float(selected["test_rmse"]), 1)},
+        {"label": "Test MAE", "value": format_number(float(selected["test_mae"]), 1)},
+        {"label": "Test R2", "value": f"{float(selected['test_r2']):.3f}"},
+        {
+            "label": "RMSE advantage",
+            "value": format_number(rmse_gap, 1),
+            "delta": "vs next-best model",
+        },
+    ]
+)
 
 st.subheader("Why it is suitable")
-reason_col, evidence_col = st.columns(2, gap="large")
+reason_col, evidence_col = st.columns(2, gap="medium")
 
 with reason_col:
-    with st.container(border=True):
+    with st.container(border=True, height="stretch"):
         st.markdown(
             f"""
             Random Forest is used for prediction because it gives the strongest error performance among the required models.
@@ -65,7 +74,7 @@ with reason_col:
         )
 
 with evidence_col:
-    with st.container(border=True):
+    with st.container(border=True, height="stretch"):
         st.markdown(
             f"""
             The model is also practical for the website. The saved comparison marks its Streamlit deployment suitability as:
@@ -78,47 +87,49 @@ with evidence_col:
 
 st.subheader("Visual evidence")
 
-with st.container(border=True):
-    st.subheader("Actual vs predicted demand")
-    st.caption("Each point is a held-out test observation. Drag to brush a region, scroll to zoom, and hover for scenario details; the dashed line is perfect agreement.")
-    st.altair_chart(actual_vs_predicted_chart(predictions), width="stretch")
+agreement_col, residual_col = st.columns(2, gap="medium")
+with agreement_col:
+    with st.container(border=True, height="stretch"):
+        st.subheader("Prediction agreement")
+        st.caption("Held-out observations; the dashed line is perfect agreement.")
+        st.altair_chart(ocr_chart(actual_vs_predicted_chart(predictions)), width="stretch")
 
-left, right = st.columns(2, gap="large")
-
-with left:
-    with st.container(border=True):
+with residual_col:
+    with st.container(border=True, height="stretch"):
         st.subheader("Residual distribution")
-        st.caption("The histogram shows whether prediction errors are centered near zero and how heavy the tails are.")
-        st.altair_chart(residual_histogram(predictions), width="stretch")
+        st.caption("Check whether errors centre near zero and whether tails are heavy.")
+        st.altair_chart(ocr_chart(residual_histogram(predictions)), width="stretch")
 
-with right:
-    with st.container(border=True):
+hourly_col, seasonal_col = st.columns(2, gap="medium")
+with hourly_col:
+    with st.container(border=True, height="stretch"):
         st.subheader("Hourly error profile")
-        st.caption("Mean absolute error across the 24-hour operating cycle; hover over points for exact values.")
-        st.altair_chart(hourly_error_chart(predictions), width="stretch")
+        st.caption("Mean absolute error across the 24-hour operating cycle.")
+        st.altair_chart(ocr_chart(hourly_error_chart(predictions)), width="stretch")
 
-left, right = st.columns(2, gap="large")
-
-with left:
-    with st.container(border=True):
+with seasonal_col:
+    with st.container(border=True, height="stretch"):
         st.subheader("Seasonal error spread")
-        st.caption("Box-and-whisker ranges compare typical and extreme absolute errors. The white point marks the mean.")
-        st.altair_chart(seasonal_error_box_chart(predictions), width="stretch")
+        st.caption("Boxes show the middle 50%; whiskers use the 1.5×IQR rule.")
+        st.altair_chart(ocr_chart(seasonal_error_box_chart(predictions)), width="stretch")
 
-with right:
-    with st.container(border=True):
-        st.subheader("Feature importance")
-        feature_count = st.slider("Features to display", 5, min(20, len(importance)), 12)
-        st.caption("Lollipop ranking of the model's strongest global feature drivers; hover for exact importance.")
-        st.altair_chart(feature_importance_chart(importance, feature_count), width="stretch")
-
-st.subheader("Top feature drivers")
-top_features = importance.head(10).rename(columns={"feature_label": "Feature", "importance": "Importance"})
-st.dataframe(
-    top_features[["Feature", "Importance"]],
-    hide_index=True,
-    column_config={"Importance": st.column_config.NumberColumn(format="%.3f")},
-)
+with st.container(border=True):
+    st.subheader("Feature importance")
+    feature_count = st.slider("Features to display", 5, min(20, len(importance)), 12)
+    st.caption("Lollipop ranking of the model's strongest global feature drivers; hover for exact importance.")
+    st.altair_chart(
+        ocr_chart(feature_importance_chart(importance, feature_count)),
+        width="stretch",
+    )
+    with st.expander("How to read feature importance", icon=":material/info:"):
+        st.markdown(
+            """
+            - The values show each feature's share of the Random Forest's total reduction in prediction error across its tree splits. Together, they sum to 1.
+            - A larger value means the model relied more heavily on that feature across the fitted trees. It does not show whether the feature raises or lowers demand.
+            - Importance is not a causal effect. Correlated inputs, such as temperature and dew point, can divide or inflate one another's importance.
+            - Category levels are one-hot encoded, so entries such as **functioning day: yes** and **season: autumn** appear as separate drivers.
+            """
+        )
 
 st.info(
     "The prediction page therefore uses Random Forest Regressor because it gives the best test error result while remaining practical for an interactive Streamlit prototype.",

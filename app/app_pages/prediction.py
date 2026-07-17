@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 import sys
 
@@ -13,8 +14,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.app_utils import build_input_frame, load_metadata, load_model
-from app.chart_utils import demand_profile_chart, supply_buffer_chart, temperature_sensitivity_chart
+from app.app_utils import build_input_frame, load_metadata, load_model, season_for_month
+from app.chart_utils import (
+    ocr_chart,
+    supply_buffer_chart,
+)
 
 
 st.title("Prediction")
@@ -27,28 +31,33 @@ st.badge(f"Prediction model: {metadata['selected_model']}", icon=":material/chec
 
 with st.container(border=True):
     st.subheader("Demand inputs")
-    left, right = st.columns(2, gap="large")
+    calendar_col, weather_col, conditions_col = st.columns(3, gap="medium")
 
-    with left:
+    with calendar_col:
         hour = st.slider("Hour", 0, 23, 18)
-        month = st.slider("Month", 1, 12, 7)
-        day = st.slider("Day", 1, 31, 15)
-        weekday = st.selectbox(
-            "Weekday",
-            options=list(range(7)),
-            format_func=lambda x: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][x],
-            index=4,
+        selected_date = st.date_input(
+            "Date",
+            value=date.today(),
+            format="DD/MM/YYYY",
+            help="Month, day, weekday, weekend status, and season are derived from this date.",
         )
+        month = selected_date.month
+        day = selected_date.day
+        weekday = selected_date.weekday()
         is_weekend = 1 if weekday in [5, 6] else 0
-        seasons = st.selectbox("Season", ["Spring", "Summer", "Autumn", "Winter"], index=1)
+        seasons = season_for_month(month)
+        weekday_label = selected_date.strftime("%A")
+        st.caption(f"Derived calendar context: {weekday_label} · {seasons}")
         holiday = st.segmented_control("Holiday", ["No Holiday", "Holiday"], default="No Holiday")
         functioning_day = st.segmented_control("Functioning day", ["Yes", "No"], default="Yes")
 
-    with right:
+    with weather_col:
         temperature_c = st.slider("Temperature (C)", -20.0, 40.0, 24.0, 0.5)
         humidity_pct = st.slider("Humidity (%)", 0, 100, 55)
         wind_speed_m_per_s = st.slider("Wind speed (m/s)", 0.0, 8.0, 1.5, 0.1)
         visibility_10m = st.slider("Visibility (10m)", 0, 2000, 1500, 10)
+
+    with conditions_col:
         dew_point_temperature_c = st.slider("Dew point temperature (C)", -30.0, 30.0, 14.0, 0.5)
         solar_radiation_mj_per_m2 = st.slider("Solar radiation (MJ/m2)", 0.0, 4.0, 0.6, 0.1)
         rainfall_mm = st.slider("Rainfall (mm)", 0.0, 40.0, 0.0, 0.1)
@@ -80,31 +89,32 @@ prediction = max(float(model.predict(input_frame)[0]), 0)
 result_col, chart_col = st.columns([0.8, 1.2], gap="large")
 
 with result_col:
-    st.metric("Predicted rented bikes", f"{prediction:,.0f}", border=True)
+    with st.container(border=True, height="stretch"):
+        st.metric("Predicted rented bikes", f"{prediction:,.0f}")
 
-    if functioning_day == "No":
-        st.warning(
-            "The system is marked as non-functioning. Interpret this as a closure or near-zero demand scenario.",
-            icon=":material/warning:",
-        )
-    elif rainfall_mm >= 5 or snowfall_cm > 0:
-        st.info(
-            "Wet or snowy weather usually lowers demand, so supply can be planned more conservatively.",
-            icon=":material/water_drop:",
-        )
-    elif hour in [8, 17, 18, 19] and temperature_c >= 10:
-        st.success(
-            "This looks like a likely peak-demand situation. Prepare extra bike supply around busy stations.",
-            icon=":material/trending_up:",
-        )
-    else:
-        st.info(
-            "Use this estimate with current station inventory before deciding relocation volume.",
-            icon=":material/info:",
-        )
+        if functioning_day == "No":
+            st.warning(
+                "The system is marked as non-functioning. Interpret this as a closure or near-zero demand scenario.",
+                icon=":material/warning:",
+            )
+        elif rainfall_mm >= 5 or snowfall_cm > 0:
+            st.info(
+                "Wet or snowy weather usually lowers demand, so supply can be planned more conservatively.",
+                icon=":material/water_drop:",
+            )
+        elif hour in [8, 17, 18, 19] and temperature_c >= 10:
+            st.success(
+                "This looks like a likely peak-demand situation. Prepare extra bike supply around busy stations.",
+                icon=":material/trending_up:",
+            )
+        else:
+            st.info(
+                "Use this estimate with current station inventory before deciding relocation volume.",
+                icon=":material/info:",
+            )
 
 with chart_col:
-    with st.container(border=True):
+    with st.container(border=True, height="stretch"):
         st.subheader("Supply buffer view")
         chart_frame = pd.DataFrame(
             {
@@ -113,50 +123,9 @@ with chart_col:
             }
         )
         st.caption("Lollipop markers show the current estimate and two practical stock buffers.")
-        st.altair_chart(supply_buffer_chart(chart_frame), width="stretch")
+        st.altair_chart(ocr_chart(supply_buffer_chart(chart_frame)), width="stretch")
 
-st.subheader("Interactive scenario analysis")
-st.caption("These views hold the other inputs constant, so they describe the model's response—not a causal effect.")
-
-profile_inputs = []
-for profile_hour in range(24):
-    profile_input = input_frame.copy()
-    profile_input.loc[0, "hour"] = profile_hour
-    profile_inputs.append(profile_input)
-hourly_predictions = model.predict(pd.concat(profile_inputs, ignore_index=True))
-hourly_profile = pd.DataFrame(
-    {
-        "hour": range(24),
-        "predicted_bikes": [max(float(value), 0) for value in hourly_predictions],
-    }
+st.caption(
+    "This page gives one operational estimate for the selected date and hour. "
+    "Use Project insights for broader historical demand patterns."
 )
-
-profile_temperatures = list(range(-15, 36, 3))
-temperature_inputs = []
-for profile_temperature in profile_temperatures:
-    temperature_input = input_frame.copy()
-    temperature_input.loc[0, "temperature_c"] = float(profile_temperature)
-    temperature_inputs.append(temperature_input)
-temperature_predictions = model.predict(pd.concat(temperature_inputs, ignore_index=True))
-temperature_profile = pd.DataFrame(
-    {
-        "temperature_c": [float(value) for value in profile_temperatures],
-        "predicted_bikes": [max(float(value), 0) for value in temperature_predictions],
-    }
-)
-
-profile_col, sensitivity_col = st.columns(2, gap="large")
-with profile_col:
-    with st.container(border=True):
-        st.subheader("Demand across the day")
-        st.caption("Predicted demand by hour for the selected date, weather, season, and operating status.")
-        st.altair_chart(demand_profile_chart(hourly_profile), width="stretch")
-
-with sensitivity_col:
-    with st.container(border=True):
-        st.subheader("Temperature response")
-        st.caption("Predicted demand across temperature scenarios; the dashed line marks the selected temperature.")
-        st.altair_chart(
-            temperature_sensitivity_chart(temperature_profile, temperature_c),
-            width="stretch",
-        )

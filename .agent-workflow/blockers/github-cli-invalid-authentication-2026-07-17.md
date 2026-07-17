@@ -1,5 +1,11 @@
 # GitHub CLI authentication is invalid
 
+## Recurrence during dashboard layout publishing
+
+- `gh auth status` again reported invalid stored tokens for both configured accounts while preparing the requested dashboard update push.
+- The requested operation is a direct commit and push, not pull-request creation, so the workflow can still attempt the repository's standard Git credential path after committing the verified local changes.
+- If `git push` is rejected, stop with the commit preserved locally and require interactive reauthentication; do not attempt to bypass the repository's access controls.
+
 ## Context and intended action
 
 While preparing to commit and push all repository changes, the GitHub publishing workflow checked the installed GitHub CLI and its authentication state.

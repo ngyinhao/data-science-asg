@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 import altair as alt
 import pandas as pd
 
@@ -16,8 +18,53 @@ PURPLE = "#B279A2"
 NEUTRAL = "#9AA5B1"
 
 MODEL_COLORS = [BLUE, ORANGE, PINK, OLIVE]
+MODEL_SHORT_LABELS = {
+    "Random Forest Regressor": "Random forest",
+    "Gradient Boosting Regressor": "Gradient boost",
+    "Decision Tree Regressor": "Decision tree",
+    "Multiple Linear Regression": "Linear",
+}
+MODEL_COMPACT_LABELS = {
+    "Random Forest Regressor": "RF",
+    "Gradient Boosting Regressor": "Gradient",
+    "Decision Tree Regressor": "Tree",
+    "Multiple Linear Regression": "Linear",
+}
 SEASON_DOMAIN = ["Spring", "Summer", "Autumn", "Winter"]
 SEASON_COLORS = [PINK, GOLD, ORANGE, BLUE]
+
+
+def ocr_chart(chart):
+    """Apply consistent, high-legibility typography to an Altair chart."""
+
+    return (
+        chart.configure_axis(
+            labelFontSize=14,
+            labelFontWeight=500,
+            labelLimit=180,
+            labelPadding=8,
+            titleFontSize=16,
+            titleFontWeight=600,
+            titleLimit=240,
+            titlePadding=12,
+            gridOpacity=0.28,
+        )
+        .configure_legend(
+            labelFontSize=14,
+            labelFontWeight=500,
+            labelLimit=220,
+            titleFontSize=15,
+            titleFontWeight=600,
+            titleLimit=220,
+        )
+        .configure_header(
+            labelFontSize=14,
+            labelFontWeight=600,
+            titleFontSize=15,
+            titleFontWeight=600,
+        )
+        .configure_view(strokeWidth=0)
+    )
 
 
 def actual_vs_predicted_chart(predictions: pd.DataFrame) -> alt.LayerChart:
@@ -56,17 +103,36 @@ def actual_vs_predicted_chart(predictions: pd.DataFrame) -> alt.LayerChart:
         .mark_line(color=NEUTRAL, strokeDash=[7, 5], strokeWidth=2)
         .encode(x="actual:Q", y="predicted:Q")
     )
-    return (ideal + points).properties(height=430).interactive()
+    return (ideal + points).properties(height=300).interactive()
 
 
 def residual_histogram(predictions: pd.DataFrame) -> alt.LayerChart:
     """Interactive residual distribution with a zero-error reference."""
 
+    residual_limit = max(
+        100,
+        math.ceil(float(predictions["residual"].abs().max()) / 100) * 100,
+    )
+    residual_domain = [-residual_limit, residual_limit]
+    residual_ticks = [
+        -residual_limit,
+        -residual_limit / 2,
+        0,
+        residual_limit / 2,
+        residual_limit,
+    ]
+
     bars = (
         alt.Chart(predictions)
         .mark_bar(color=ORANGE, opacity=0.82, cornerRadiusTopLeft=3, cornerRadiusTopRight=3)
         .encode(
-            x=alt.X("residual:Q", bin=alt.Bin(maxbins=36), title="Residual (actual - predicted)"),
+            x=alt.X(
+                "residual:Q",
+                bin=alt.Bin(maxbins=36),
+                title="Residual (actual - predicted)",
+                scale=alt.Scale(domain=residual_domain, nice=False),
+                axis=alt.Axis(values=residual_ticks, format=",.0f", labelAngle=-30),
+            ),
             y=alt.Y("count():Q", title="Test observations"),
             tooltip=[
                 alt.Tooltip("residual:Q", bin=alt.Bin(maxbins=36), title="Residual range"),
@@ -74,7 +140,11 @@ def residual_histogram(predictions: pd.DataFrame) -> alt.LayerChart:
             ],
         )
     )
-    zero = alt.Chart(pd.DataFrame({"x": [0]})).mark_rule(color=NEUTRAL, strokeDash=[5, 4]).encode(x="x:Q")
+    zero = (
+        alt.Chart(pd.DataFrame({"x": [0]}))
+        .mark_rule(color=NEUTRAL, strokeDash=[5, 4])
+        .encode(x=alt.X("x:Q", scale=alt.Scale(domain=residual_domain, nice=False)))
+    )
     return (bars + zero).properties(height=300).interactive(bind_y=False)
 
 
@@ -86,7 +156,11 @@ def hourly_error_chart(predictions: pd.DataFrame) -> alt.LayerChart:
         observations=("absolute_error", "size"),
     )
     base = alt.Chart(hourly).encode(
-        x=alt.X("hour:O", title="Hour of day", axis=alt.Axis(labelAngle=0)),
+        x=alt.X(
+            "hour:O",
+            title="Hour of day",
+            axis=alt.Axis(labelAngle=0, values=list(range(0, 24, 3))),
+        ),
         y=alt.Y("mean_absolute_error:Q", title="Mean absolute error (bikes)", scale=alt.Scale(zero=True)),
         tooltip=[
             alt.Tooltip("hour:O", title="Hour"),
@@ -100,24 +174,58 @@ def hourly_error_chart(predictions: pd.DataFrame) -> alt.LayerChart:
 
 
 def seasonal_error_box_chart(predictions: pd.DataFrame) -> alt.LayerChart:
-    """Pre-aggregated seasonal box-and-whisker chart with useful tooltips."""
+    """Seasonal box plot with Tukey whiskers and outlier context."""
 
-    grouped = predictions.groupby("seasons")["absolute_error"]
-    stats = grouped.agg(min_error="min", q1=lambda x: x.quantile(0.25), median="median", q3=lambda x: x.quantile(0.75), max_error="max", mean="mean").reset_index()
+    stats_rows = []
+    for season, errors in predictions.groupby("seasons")["absolute_error"]:
+        q1 = float(errors.quantile(0.25))
+        q3 = float(errors.quantile(0.75))
+        iqr = q3 - q1
+        lower_fence = max(0.0, q1 - 1.5 * iqr)
+        upper_fence = q3 + 1.5 * iqr
+        inliers = errors.loc[errors.between(lower_fence, upper_fence)]
+        stats_rows.append(
+            {
+                "seasons": season,
+                "lower_whisker": float(inliers.min()),
+                "q1": q1,
+                "median": float(errors.median()),
+                "q3": q3,
+                "upper_whisker": float(inliers.max()),
+                "mean": float(errors.mean()),
+                "outlier_count": int((~errors.between(lower_fence, upper_fence)).sum()),
+                "observations": int(len(errors)),
+            }
+        )
+    stats = pd.DataFrame(stats_rows)
     color = alt.Color("seasons:N", title="Season", scale=alt.Scale(domain=SEASON_DOMAIN, range=SEASON_COLORS), legend=None)
     tooltip = [
         alt.Tooltip("seasons:N", title="Season"),
-        alt.Tooltip("min_error:Q", title="Minimum", format=",.1f"),
+        alt.Tooltip("lower_whisker:Q", title="Lower whisker", format=",.1f"),
         alt.Tooltip("q1:Q", title="25th percentile", format=",.1f"),
         alt.Tooltip("median:Q", title="Median", format=",.1f"),
         alt.Tooltip("q3:Q", title="75th percentile", format=",.1f"),
-        alt.Tooltip("max_error:Q", title="Maximum", format=",.1f"),
+        alt.Tooltip("upper_whisker:Q", title="Upper whisker", format=",.1f"),
         alt.Tooltip("mean:Q", title="Mean", format=",.1f"),
+        alt.Tooltip("outlier_count:Q", title="Outliers beyond whiskers", format=",d"),
+        alt.Tooltip("observations:Q", title="Observations", format=",d"),
     ]
-    base = alt.Chart(stats).encode(x=alt.X("seasons:N", title="Season", sort=SEASON_DOMAIN), color=color, tooltip=tooltip)
-    whisker = base.mark_rule(strokeWidth=2).encode(y=alt.Y("min_error:Q", title="Absolute error (bikes)"), y2="max_error:Q")
-    box = base.mark_bar(size=55, opacity=0.8).encode(y="q1:Q", y2="q3:Q")
-    median = base.mark_tick(color="#263238", thickness=3, size=55).encode(y="median:Q")
+    base = alt.Chart(stats).encode(
+        x=alt.X(
+            "seasons:N",
+            title="Season",
+            sort=SEASON_DOMAIN,
+            axis=alt.Axis(labelAngle=0),
+        ),
+        color=color,
+        tooltip=tooltip,
+    )
+    whisker = base.mark_rule(strokeWidth=2).encode(
+        y=alt.Y("lower_whisker:Q", title="Absolute error (bikes)"),
+        y2="upper_whisker:Q",
+    )
+    box = base.mark_bar(size=48, opacity=0.85).encode(y="q1:Q", y2="q3:Q")
+    median = base.mark_tick(color="#263238", thickness=3, size=48).encode(y="median:Q")
     mean = base.mark_point(filled=True, color="#FFFFFF", stroke="#263238", size=75).encode(y="mean:Q")
     return (whisker + box + median + mean).properties(height=300)
 
@@ -145,10 +253,11 @@ def rmse_ranking_chart(comparison: pd.DataFrame) -> alt.LayerChart:
 
     data = comparison.sort_values("test_rmse").copy()
     data["zero"] = 0.0
+    data["model_label"] = data["model"].map(MODEL_SHORT_LABELS)
     best = str(data.iloc[0]["model"])
-    order = list(data["model"])
+    order = list(data["model_label"])
     base = alt.Chart(data).encode(
-        y=alt.Y("model:N", title=None, sort=order),
+        y=alt.Y("model_label:N", title=None, sort=order),
         tooltip=[
             alt.Tooltip("model:N", title="Model"),
             alt.Tooltip("test_rmse:Q", title="Test RMSE", format=",.1f"),
@@ -156,12 +265,19 @@ def rmse_ranking_chart(comparison: pd.DataFrame) -> alt.LayerChart:
             alt.Tooltip("test_r2:Q", title="Test R2", format=".3f"),
         ],
     )
-    stems = base.mark_rule(color=NEUTRAL, strokeWidth=3).encode(x=alt.X("zero:Q", title="Test RMSE (lower is better)"), x2="test_rmse:Q")
+    stems = base.mark_rule(color=NEUTRAL, strokeWidth=3).encode(
+        x=alt.X(
+            "zero:Q",
+            title="Test RMSE",
+            scale=alt.Scale(domain=[0, 480], nice=False),
+        ),
+        x2="test_rmse:Q",
+    )
     dots = base.mark_circle(size=170, stroke="#FFFFFF", strokeWidth=1.2).encode(
-        x="test_rmse:Q",
+        x=alt.X("test_rmse:Q", scale=alt.Scale(domain=[0, 480], nice=False)),
         color=alt.condition(alt.datum.model == best, alt.value(ORANGE), alt.value(BLUE)),
     )
-    return (stems + dots).properties(height=250)
+    return (stems + dots).properties(height=300)
 
 
 def error_metrics_chart(comparison: pd.DataFrame) -> alt.Chart:
@@ -172,17 +288,35 @@ def error_metrics_chart(comparison: pd.DataFrame) -> alt.Chart:
     )
     labels = {"test_mae": "MAE", "test_rmse": "Test RMSE", "cross_validation_rmse": "CV RMSE"}
     data["metric"] = data["metric"].map(labels)
+    data["model_label"] = data["model"].map(MODEL_COMPACT_LABELS)
     return (
         alt.Chart(data)
         .mark_bar(cornerRadiusTopLeft=4, cornerRadiusTopRight=4)
         .encode(
-            x=alt.X("model:N", title=None, axis=alt.Axis(labelAngle=-18)),
+            x=alt.X(
+                "model_label:N",
+                title=None,
+                sort=list(MODEL_COMPACT_LABELS.values()),
+                axis=alt.Axis(labelAngle=0, labelLimit=90, labelOverlap=False),
+            ),
             xOffset="metric:N",
             y=alt.Y("bike_count_error:Q", title="Bike count error", scale=alt.Scale(zero=True)),
-            color=alt.Color("metric:N", title="Metric", scale=alt.Scale(domain=["MAE", "Test RMSE", "CV RMSE"], range=[GOLD, BLUE, PINK])),
-            tooltip=["model:N", "metric:N", alt.Tooltip("bike_count_error:Q", title="Error", format=",.1f")],
+            color=alt.Color(
+                "metric:N",
+                title=None,
+                scale=alt.Scale(
+                    domain=["MAE", "Test RMSE", "CV RMSE"],
+                    range=[GOLD, BLUE, PINK],
+                ),
+                legend=alt.Legend(orient="bottom", direction="horizontal", columns=3),
+            ),
+            tooltip=[
+                alt.Tooltip("model:N", title="Model"),
+                alt.Tooltip("metric:N", title="Metric"),
+                alt.Tooltip("bike_count_error:Q", title="Error", format=",.1f"),
+            ],
         )
-        .properties(height=330)
+        .properties(height=300)
     )
 
 
@@ -190,9 +324,10 @@ def fit_quality_dumbbell_chart(comparison: pd.DataFrame) -> alt.LayerChart:
     """Training-versus-testing R2 dumbbells that expose overfitting gaps."""
 
     data = comparison[["model", "training_r2", "testing_r2", "train_test_r2_gap"]].copy()
-    order = list(data.sort_values("testing_r2", ascending=False)["model"])
+    data["model_label"] = data["model"].map(MODEL_SHORT_LABELS)
+    order = list(data.sort_values("testing_r2", ascending=False)["model_label"])
     base = alt.Chart(data).encode(
-        y=alt.Y("model:N", title=None, sort=order),
+        y=alt.Y("model_label:N", title=None, sort=order),
         tooltip=[
             alt.Tooltip("model:N", title="Model"),
             alt.Tooltip("training_r2:Q", title="Training R2", format=".3f"),
@@ -203,7 +338,7 @@ def fit_quality_dumbbell_chart(comparison: pd.DataFrame) -> alt.LayerChart:
     connector = base.mark_rule(color=NEUTRAL, strokeWidth=4).encode(x=alt.X("testing_r2:Q", title="R2 score", scale=alt.Scale(domain=[0.5, 1.0])), x2="training_r2:Q")
     testing = base.mark_circle(color=BLUE, size=150).encode(x="testing_r2:Q")
     training = base.mark_circle(color=ORANGE, size=150).encode(x="training_r2:Q")
-    return (connector + testing + training).properties(height=250)
+    return (connector + testing + training).properties(height=260)
 
 
 def weak_spot_heatmap(comparison: pd.DataFrame) -> alt.Chart:
@@ -219,12 +354,17 @@ def weak_spot_heatmap(comparison: pd.DataFrame) -> alt.Chart:
         "worst_functioning_day_group_mae": "Worst operating group",
     }
     data["weak_spot"] = data["weak_spot"].map(labels)
+    data["model_label"] = data["model"].map(MODEL_SHORT_LABELS)
     return (
         alt.Chart(data)
         .mark_rect(cornerRadius=3)
         .encode(
             x=alt.X("weak_spot:N", title=None, sort=list(labels.values()), axis=alt.Axis(labelAngle=-15)),
-            y=alt.Y("model:N", title=None, sort=list(comparison["model"])),
+            y=alt.Y(
+                "model_label:N",
+                title=None,
+                sort=[MODEL_SHORT_LABELS[model] for model in comparison["model"]],
+            ),
             color=alt.Color("mean_absolute_error:Q", title="MAE", scale=alt.Scale(scheme="orangered")),
             tooltip=["model:N", "weak_spot:N", alt.Tooltip("mean_absolute_error:Q", title="MAE", format=",.1f")],
         )

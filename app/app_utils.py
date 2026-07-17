@@ -68,6 +68,20 @@ CONTINUOUS_INSIGHT_VARIABLES = {
 }
 
 
+def season_for_month(month: int) -> str:
+    """Return the meteorological season represented by a calendar month."""
+
+    if month in (3, 4, 5):
+        return "Spring"
+    if month in (6, 7, 8):
+        return "Summer"
+    if month in (9, 10, 11):
+        return "Autumn"
+    if month in (12, 1, 2):
+        return "Winter"
+    raise ValueError(f"Month must be between 1 and 12, received {month}.")
+
+
 @st.cache_resource
 def load_model() -> Any:
     """Load the selected prediction model with deployment-safe parallelism."""
@@ -303,6 +317,22 @@ def format_number(value: float, decimals: int = 0) -> str:
     """Format numeric metric values consistently."""
 
     return f"{value:,.{decimals}f}"
+
+
+def render_metric_grid(metrics: list[dict[str, Any]]) -> None:
+    """Render full-width rows of up to four equal-size overview metrics."""
+
+    for row_start in range(0, len(metrics), 4):
+        row_metrics = metrics[row_start : row_start + 4]
+        columns = st.columns(len(row_metrics), gap="small")
+        for column, metric in zip(columns, row_metrics, strict=True):
+            with column:
+                st.metric(
+                    **metric,
+                    border=True,
+                    width="stretch",
+                    height=140,
+                )
 
 
 def selected_model_row(comparison: pd.DataFrame, selected_model: str) -> pd.Series:
