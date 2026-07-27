@@ -338,7 +338,7 @@ def create_notebooks(tables: dict[str, object], observations: dict[str, str]) ->
             "- Non-functioning-day records are kept because a closure or inactive system state is important for bike supply planning.\n"
             "- Outliers are kept because peak demand is exactly what the supply planning frame needs to understand.\n"
             "- Numeric features are scaled so Multiple Linear Regression has a fair baseline setup.\n"
-            "- The project uses an 80/20 train-test split with a fixed random seed for reproducibility."
+            "- The project uses a 70/30 train-test split with a fixed random seed for reproducibility."
         ),
     ]
     write_notebook(NOTEBOOKS_DIR / "02_data_preparation.ipynb", prep_cells)

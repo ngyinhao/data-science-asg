@@ -284,7 +284,7 @@ def train_and_evaluate() -> dict[str, object]:
     X_train, X_test, y_train, y_test = train_test_split(
         X,
         y,
-        test_size=0.2,
+        test_size=0.3,
         random_state=RANDOM_STATE,
         shuffle=True,
     )
@@ -374,7 +374,7 @@ def train_and_evaluate() -> dict[str, object]:
         "feature_columns": FEATURE_COLUMNS,
         "numeric_features": NUMERIC_FEATURES,
         "categorical_features": CATEGORICAL_FEATURES,
-        "split_strategy": "Random 80/20 train-test split with random_state=42.",
+        "split_strategy": "Random 70/30 train-test split with random_state=42.",
         "preprocessing_decisions": [
             "Date was converted to a date type and expanded into month, day, weekday, and weekend fields.",
             "Categorical variables were one-hot encoded: seasons, holiday, and functioning_day.",

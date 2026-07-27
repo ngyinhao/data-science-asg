@@ -14,3 +14,10 @@
 - **Context:** Push commit `856196f` from `main` to `origin`.
 - **Symptom:** `git push origin main` again failed before authentication with `Failed to connect to github.com:443`.
 - **Workaround:** Re-run the scoped push command with approved network access.
+
+## Recurrence and misleading auth output (2026-07-27)
+
+- **Context:** Verify GitHub credentials before a scoped commit and push.
+- **Symptom:** Sandboxed `gh auth status` labeled both keyring tokens invalid, while `gh api user` exposed the underlying socket-access denial.
+- **Result:** With approved network access, `gh api user` returned `ngyinhao` and `gh auth status` validated both configured accounts.
+- **Lesson:** In this environment, an `invalid token` result from sandboxed GitHub CLI checks is not conclusive. Re-run a narrow read-only authentication probe with approved network access before diagnosing credential expiry.
