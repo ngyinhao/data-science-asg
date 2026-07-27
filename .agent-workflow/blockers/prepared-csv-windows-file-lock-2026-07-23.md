@@ -40,3 +40,4 @@ Close spreadsheet viewers or other processes using the prepared CSV before runni
 - Host-level process inspection found no Excel, Python, Streamlit, editor, or BI process holding the files.
 - The training and artifact scripts succeeded when rerun through the approved host-filesystem path, confirming that this recurrence was caused by the managed offline filesystem layer rather than a user application lock.
 - The same layer later denied an exact three-notebook reverse patch with `unable to unlink` and `Permission denied`, while the equivalent narrowly scoped operation remained eligible for the host-filesystem workaround.
+- The layer also denied deletion of a temporary PR-body Markdown file created by this workflow; cleanup succeeded only through the same explicit host-filesystem path.
