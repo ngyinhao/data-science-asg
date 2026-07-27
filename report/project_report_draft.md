@@ -13,7 +13,7 @@
 
 This project predicts hourly bike rental demand in Seoul so a bike-sharing operator can prepare enough bicycles during high-demand periods and avoid unnecessary oversupply during low-demand periods. The dataset contains hourly rental demand, weather, holiday, season, and system-functioning information.
 
-The best model is **Random Forest Regressor** with test RMSE **177.20**, MAE **99.99**, and R2 **0.925**.
+The best model is **Random Forest Regressor** with test RMSE **181.46**, MAE **102.91**, and R2 **0.920**.
 
 ## 1. Business Understanding
 
@@ -73,10 +73,10 @@ The project uses more than 15 comparison points: MAE, RMSE, R2, adjusted R2, tra
 
 | model | test_mae | test_rmse | test_r2 | adjusted_r2 | training_r2 | train_test_r2_gap | cross_validation_rmse | top_feature | rank_by_rmse |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Random Forest Regressor | 99.990 | 177.197 | 0.925 | 0.924 | 0.984 | 0.060 | 173.636 | num__temperature_c | 1 |
-| Gradient Boosting Regressor | 128.598 | 202.733 | 0.901 | 0.900 | 0.923 | 0.021 | 198.027 | num__temperature_c | 2 |
-| Decision Tree Regressor | 137.906 | 242.582 | 0.859 | 0.857 | 0.960 | 0.101 | 232.859 | num__hour | 3 |
-| Multiple Linear Regression | 310.993 | 427.226 | 0.562 | 0.558 | 0.558 | -0.004 | 430.022 | cat__functioning_day_Yes | 4 |
+| Random Forest Regressor | 102.912 | 181.461 | 0.920 | 0.919 | 0.984 | 0.064 | 180.639 | num__temperature_c | 1 |
+| Gradient Boosting Regressor | 128.067 | 202.682 | 0.900 | 0.899 | 0.926 | 0.026 | 202.086 | num__temperature_c | 2 |
+| Decision Tree Regressor | 138.193 | 241.534 | 0.858 | 0.857 | 0.938 | 0.081 | 242.036 | num__hour | 3 |
+| Multiple Linear Regression | 306.454 | 421.051 | 0.567 | 0.565 | 0.559 | -0.008 | 431.239 | cat__functioning_day_No | 4 |
 
 Final selection reason: Random Forest Regressor achieved the lowest test RMSE among the four required models while remaining suitable for a Streamlit prototype.
 

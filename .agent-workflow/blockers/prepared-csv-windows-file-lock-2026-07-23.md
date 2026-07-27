@@ -32,3 +32,12 @@ Close the process using the generated artifacts, then rerun the normal training 
 ## Prevention
 
 Close spreadsheet viewers or other processes using the prepared CSV before running the full pipeline. Longer term, consider writing prepared output atomically to a temporary file and replacing the destination, while retaining a model-only option that does not rewrite unchanged processed data.
+
+## Recurrence (2026-07-27 full 70/30 refresh)
+
+- The explicitly authorized full regeneration again failed at `prepared.to_csv(...)` with `PermissionError: [Errno 13] Permission denied` for `data/processed/seoul_bike_prepared.csv`.
+- The failure occurred before model fitting or model-artifact writes, so this attempt did not partially refresh the model outputs.
+- Host-level process inspection found no Excel, Python, Streamlit, editor, or BI process holding the files.
+- The training and artifact scripts succeeded when rerun through the approved host-filesystem path, confirming that this recurrence was caused by the managed offline filesystem layer rather than a user application lock.
+- The same layer later denied an exact three-notebook reverse patch with `unable to unlink` and `Permission denied`, while the equivalent narrowly scoped operation remained eligible for the host-filesystem workaround.
+- The layer also denied deletion of a temporary PR-body Markdown file created by this workflow; cleanup succeeded only through the same explicit host-filesystem path.

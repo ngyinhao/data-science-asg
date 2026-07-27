@@ -40,7 +40,7 @@
     "holiday",
     "functioning_day"
   ],
-  "split_strategy": "Random 80/20 train-test split with random_state=42.",
+  "split_strategy": "Random 70/30 train-test split with random_state=42.",
   "preprocessing_decisions": [
     "Date was converted to a date type and expanded into month, day, weekday, and weekend fields.",
     "Categorical variables were one-hot encoded: seasons, holiday, and functioning_day.",
