@@ -14,7 +14,13 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.app_utils import build_input_frame, load_metadata, load_model, season_for_month
+from app.app_utils import (
+    build_input_frame,
+    load_metadata,
+    load_model,
+    season_for_month,
+    snowfall_effect_feedback,
+)
 from app.chart_utils import (
     ocr_chart,
     supply_buffer_chart,
@@ -85,6 +91,16 @@ input_frame = build_input_frame(
 )
 
 prediction = max(float(model.predict(input_frame)[0]), 0)
+snowfall_feedback = None
+if snowfall_cm > 0 and functioning_day == "Yes":
+    no_snow_input_frame = input_frame.copy()
+    no_snow_input_frame.loc[0, "snowfall_cm"] = 0.0
+    no_snow_prediction = max(float(model.predict(no_snow_input_frame)[0]), 0)
+    snowfall_feedback = snowfall_effect_feedback(
+        snowfall_cm=snowfall_cm,
+        prediction=prediction,
+        no_snow_prediction=no_snow_prediction,
+    )
 
 result_col, chart_col = st.columns([0.8, 1.2], gap="large")
 
@@ -94,24 +110,50 @@ with result_col:
 
         if functioning_day == "No":
             st.warning(
-                "The system is marked as non-functioning. Interpret this as a closure or near-zero demand scenario.",
+                "The system is marked as non-functioning. The value shown is the model's "
+                "actual prediction for the selected inputs and has not been forced to zero.",
                 icon=":material/warning:",
             )
-        elif rainfall_mm >= 5 or snowfall_cm > 0:
-            st.info(
-                "Wet or snowy weather usually lowers demand, so supply can be planned more conservatively.",
-                icon=":material/water_drop:",
-            )
-        elif hour in [8, 17, 18, 19] and temperature_c >= 10:
-            st.success(
-                "This looks like a likely peak-demand situation. Prepare extra bike supply around busy stations.",
-                icon=":material/trending_up:",
-            )
         else:
-            st.info(
-                "Use this estimate with current station inventory before deciding relocation volume.",
-                icon=":material/info:",
-            )
+            weather_message_displayed = False
+
+            if snowfall_feedback is not None:
+                feedback_level, feedback_message = snowfall_feedback
+                getattr(st, feedback_level)(
+                    feedback_message,
+                    icon=":material/ac_unit:",
+                )
+                weather_message_displayed = True
+
+                if seasons != "Winter":
+                    st.warning(
+                        f"Snowfall is unusual in {seasons.lower()}. Check that the selected "
+                        "date and snowfall amount are correct before using this estimate.",
+                        icon=":material/calendar_month:",
+                    )
+
+            if rainfall_mm > 0:
+                rain_intensity = "Heavy rainfall" if rainfall_mm >= 5 else "Rainfall"
+                st.info(
+                    f"{rain_intensity} usually lowers bike demand. Consider the wet-weather "
+                    "conditions when planning bike supply.",
+                    icon=":material/water_drop:",
+                )
+                weather_message_displayed = True
+
+            if not weather_message_displayed:
+                if hour in [8, 17, 18, 19] and temperature_c >= 10:
+                    st.success(
+                        "This looks like a likely peak-demand situation. Prepare extra bike "
+                        "supply around busy stations.",
+                        icon=":material/trending_up:",
+                    )
+                else:
+                    st.info(
+                        "Use this estimate with current station inventory before deciding "
+                        "relocation volume.",
+                        icon=":material/info:",
+                    )
 
 with chart_col:
     with st.container(border=True, height="stretch"):

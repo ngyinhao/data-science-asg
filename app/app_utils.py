@@ -277,6 +277,36 @@ def build_input_frame(values: dict[str, object]) -> pd.DataFrame:
     return pd.DataFrame([row])
 
 
+def snowfall_effect_feedback(
+    snowfall_cm: float,
+    prediction: float,
+    no_snow_prediction: float,
+) -> tuple[str, str] | None:
+    """Describe snowfall's raw model effect against the same dry scenario."""
+
+    if snowfall_cm <= 0:
+        return None
+
+    difference = prediction - no_snow_prediction
+    comparison = (
+        "Snowfall effect for this scenario: "
+        f"{prediction:,.2f} bikes with {snowfall_cm:.1f} cm versus "
+        f"{no_snow_prediction:,.2f} bikes at 0 cm"
+    )
+    if abs(difference) < 0.005:
+        return (
+            "info",
+            f"{comparison} — difference 0.00 bikes. "
+            "This tree-model scenario is unchanged.",
+        )
+
+    direction = "more" if difference > 0 else "fewer"
+    return (
+        "info",
+        f"{comparison} — {abs(difference):,.2f} {direction} bikes.",
+    )
+
+
 def figure_path(filename: str) -> Path:
     """Return the full path to a generated project figure."""
 

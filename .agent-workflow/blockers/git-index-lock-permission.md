@@ -29,3 +29,7 @@ Staging the Streamlit deployment recovery with `git add --all` again failed beca
 ## Recurrence — 2026-08-24
 
 Staging an explicit set of files with `git add -- <paths>` failed with the same `.git/index.lock` permission error. The failed attempt did not stage files. Retrying the same narrowly scoped command with escalated permission succeeded, while unrelated working-tree changes remained unstaged. Future commit workflows in this managed workspace should inspect status first, stage explicit paths, and expect Git index writes to require approval.
+
+## Recurrence — 2026-08-27
+
+`git add --all`, explicitly requested to include the complete working tree and a new notebook, again failed before staging because the sandbox could not create `.git/index.lock`. The working tree remained intact. Reuse the established workaround: retry the same Git index write with narrowly scoped elevated permission.
